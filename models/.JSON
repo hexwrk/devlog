@@ -1,0 +1,11 @@
+json{
+  "id": "uuid",
+  "title": "Build a port scanner in Python",
+  "category": "Lab",
+  "skill": "Python",
+  "status": "In Progress",
+  "priority": "High",
+  "resource_url": "https://docs.python.org/3/library/socket.html",
+  "created_at": "2026-02-25",
+  "completed_at": null
+}
