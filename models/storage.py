@@ -35,3 +35,10 @@ def add_task(task: Task) -> None:
     tasks = load_tasks()
     tasks.append(task)
     save_tasks(tasks)
+def filter_tasks(tasks: list[Task], category: str = None, skill: str = None, status: str = None) -> list[Task]:
+    return [
+        t for t in tasks 
+        if (category is None or t.category == category) and
+        (skill is None or t.skill == skill) and
+        (status is None or t.status == status)
+    ]
