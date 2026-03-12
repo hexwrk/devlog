@@ -1,0 +1,79 @@
+[
+  {
+    "id": "1",
+    "title": "Set up repo",
+    "category": "Setup",
+    "category_colour": "#7C5CFC",
+    "skill": "Git",
+    "status": "Done",
+    "notes": "",
+    "completed_at": "2026-03-04",
+    "due_date": null
+  },
+  {
+    "id": "2",
+    "title": "Design schema",
+    "category": "Backend",
+    "category_colour": "#FC5C7D",
+    "skill": "SQL",
+    "status": "Done",
+    "notes": "",
+    "completed_at": "2026-03-03",
+    "due_date": null
+  },
+  {
+    "id": "4",
+    "title": "Old task 2",
+    "category": "Testing",
+    "category_colour": "#FF9500",
+    "skill": "Python",
+    "status": "Done",
+    "notes": "",
+    "completed_at": "2026-02-28",
+    "due_date": null
+  },
+  {
+    "id": "5",
+    "title": "Build login UI",
+    "category": "Frontend",
+    "category_colour": "#43E97B",
+    "skill": "CustomTkinter",
+    "status": "In Progress",
+    "notes": "",
+    "completed_at": null,
+    "due_date": "2026-03-04"
+  },
+  {
+    "id": "6",
+    "title": "Deploy to server",
+    "category": "DevOps",
+    "category_colour": "#F7B731",
+    "skill": "Docker",
+    "status": "Blocked",
+    "notes": "Waiting on creds",
+    "completed_at": null,
+    "due_date": null
+  },
+  {
+    "id": "7",
+    "title": "Write unit tests",
+    "category": "Testing",
+    "category_colour": "#FF9500",
+    "skill": "Python",
+    "status": "Todo",
+    "notes": "",
+    "completed_at": null,
+    "due_date": null
+  },
+  {
+    "id": "8",
+    "title": "Software",
+    "category": "Setup",
+    "category_colour": "#7C5CFC",
+    "skill": "JavaScript",
+    "status": "In Progress",
+    "notes": "busy completing",
+    "completed_at": null,
+    "due_date": null
+  }
+]
