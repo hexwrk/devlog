@@ -107,6 +107,7 @@ class DashboardView(ctk.CTkFrame):
 
         self._skill_card = self._insight_card(row3, "🛠", "Most Active Skill")
         self._due_card   = self._insight_card(row3, "📅", "Due Today")
+        self._xp_card    = self._insight_card(row3, "✦", "Total XP")
 
         # ── Row 4: Quick add ──────────────────────────────────────────────────
         ctk.CTkFrame(self._scroll, height=1, fg_color=DIVIDER).pack(
@@ -224,6 +225,7 @@ class DashboardView(ctk.CTkFrame):
         due = analytics.get_due_today(tasks)
         due_text = str(len(due)) if due else "None"
         self._due_card.configure(text=due_text)
+        self._xp_card.configure(text=str(sum(analytics.get_skill_xp(tasks).values())))
 
     # ── Quick add ─────────────────────────────────────────────────────────────
 

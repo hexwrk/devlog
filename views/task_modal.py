@@ -8,7 +8,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog
 import storage
-from models import Task
+from models import CATEGORIES, DIFFICULTIES, Task
 
 MODAL_BG     = "#1C1C1E"
 INPUT_BG     = "#2C2C2E"
@@ -19,14 +19,13 @@ ERROR_RED    = "#FC5C7D"
 DROP_BG      = "#242426"
 DROP_HOVER   = "#2A2A4A"
 
-CATEGORIES = ["Setup", "Frontend", "Backend", "DevOps", "Design", "Testing", "Other"]
 SKILLS     = ["Python", "Git", "SQL", "CustomTkinter", "HTML", "CSS",
-              "JavaScript", "Docker", "Other"]
+              "JavaScript", "Docker", "Linux", "Networking", "Web Security",
+              "Cryptography", "Reverse Engineering", "Other"]
 STATUSES   = ["Todo", "In Progress", "Done", "Blocked"]
-COLOURS    = {
-    "Setup":    "#7C5CFC", "Frontend": "#43E97B", "Backend":  "#FC5C7D",
-    "DevOps":   "#F7B731", "Design":   "#00D4FF", "Testing":  "#FF9500",
-    "Other":    "#888888",
+COLOURS = {
+    "Lab": "#00D4FF", "Study": "#43E97B", "Project": "#7C5CFC",
+    "CTF": "#FC5C7D", "Reading": "#F7B731", "Revision": "#FF9500",
 }
 
 
@@ -76,31 +75,20 @@ class TaskModal(ctk.CTkToplevel):
         self._dropdown(scroll, "Category", CATEGORIES, pad)
         self._dropdown(scroll, "Skill",    SKILLS,      pad)
         self._dropdown(scroll, "Status",   STATUSES,    pad)
+        self._dropdown(scroll, "Difficulty", DIFFICULTIES, pad)
 
-        # ── Repo URL ──────────────────────────────────────────────────────────
-        ctk.CTkLabel(scroll, text="GitHub / Repo URL",
+        # ── Resource URLs ─────────────────────────────────────────────────────
+        ctk.CTkLabel(scroll, text="Resource URLs (one per line)",
                      font=ctk.CTkFont(size=12), text_color=TEXT_MUTED,
                      ).pack(anchor="w", pady=(10, 2), **pad)
 
-        repo_row = ctk.CTkFrame(scroll, fg_color="transparent")
-        repo_row.pack(fill="x", **pad)
-
-        self._repo_entry = ctk.CTkEntry(
-            repo_row, height=36, corner_radius=8,
+        self._resources_box = ctk.CTkTextbox(
+            scroll, height=58, corner_radius=8,
             fg_color=INPUT_BG, border_color="#3A3A3C",
             text_color=TEXT_PRIMARY,
-            placeholder_text="https://github.com/user/repo",
             font=ctk.CTkFont(family="Segoe UI", size=13),
         )
-        self._repo_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
-
-        # Open repo button
-        ctk.CTkButton(
-            repo_row, text="🔗", width=36, height=36, corner_radius=8,
-            fg_color="#2C2C2E", hover_color="#3A3A3C",
-            text_color=TEXT_PRIMARY,
-            command=self._open_repo,
-        ).pack(side="right")
+        self._resources_box.pack(fill="x", **pad)
 
         # ── Drag & Drop zone ──────────────────────────────────────────────────
         ctk.CTkLabel(scroll, text="Attachments",
@@ -280,7 +268,7 @@ class TaskModal(ctk.CTkToplevel):
                 row, text="↗", width=28, height=24, corner_radius=4,
                 fg_color="transparent", hover_color="#3A3A3C",
                 text_color=TEXT_MUTED,
-                command=lambda p=path: os.startfile(p),
+                command=lambda p=path: self._open_attachment(p),
             ).pack(side="right", padx=(0, 4))
 
             # Remove button
@@ -296,9 +284,19 @@ class TaskModal(ctk.CTkToplevel):
             self._attachments.remove(path)
         self._refresh_attachment_list()
 
+    def _open_attachment(self, path: str):
+        import subprocess
+        if hasattr(os, "startfile"):
+            os.startfile(path)
+        else:
+            subprocess.Popen(["xdg-open", path], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+
     def _open_repo(self):
-        url = self._repo_entry.get().strip()
-        if url:
+        urls = self._resources_box.get("1.0", "end").splitlines()
+        url = urls[0].strip() if urls else ""
+        from urllib.parse import urlparse
+        if urlparse(url).scheme in {"http", "https"} and urlparse(url).netloc:
             import webbrowser
             webbrowser.open(url)
 
@@ -310,8 +308,8 @@ class TaskModal(ctk.CTkToplevel):
         if t.category in CATEGORIES: self._category_var.set(t.category)
         if t.skill    in SKILLS:     self._skill_var.set(t.skill)
         if t.status   in STATUSES:   self._status_var.set(t.status)
-        if t.repo_url:
-            self._repo_entry.insert(0, t.repo_url)
+        if t.resources:
+            self._resources_box.insert("1.0", "\n".join(t.resources))
         if t.notes:
             self._notes_box.insert("1.0", t.notes)
 
@@ -325,21 +323,21 @@ class TaskModal(ctk.CTkToplevel):
 
         notes    = self._notes_box.get("1.0", "end").strip()
         cat      = self._category_var.get()
-        repo_url = self._repo_entry.get().strip()
+        resources = [url.strip() for url in self._resources_box.get("1.0", "end").splitlines() if url.strip()]
 
         if self._mode == "add":
-            task = Task(
-                id=storage.next_id(),
-                title=title,
-                category=cat,
-                category_colour=COLOURS.get(cat, "#888888"),
-                skill=self._skill_var.get(),
-                status=self._status_var.get(),
-                notes=notes,
-                repo_url=repo_url,
-                attachments=self._attachments,
-            )
-            storage.save_task(task)
+            try:
+                task = Task(
+                    id=storage.next_id(), title=title, category=cat,
+                    category_colour=COLOURS.get(cat, "#888888"),
+                    skill=self._skill_var.get(), status=self._status_var.get(),
+                    notes=notes, resources=resources, attachments=self._attachments,
+                    difficulty=self._difficulty_var.get(),
+                )
+                storage.save_task(task)
+            except ValueError as exc:
+                self._error_label.configure(text=str(exc))
+                return
         else:
             self._task.title           = title
             self._task.category        = cat
@@ -347,9 +345,15 @@ class TaskModal(ctk.CTkToplevel):
             self._task.skill           = self._skill_var.get()
             self._task.status          = self._status_var.get()
             self._task.notes           = notes
-            self._task.repo_url        = repo_url
+            self._task.resources       = resources
             self._task.attachments     = self._attachments
-            storage.update_task(self._task)
+            self._task.difficulty      = self._difficulty_var.get()
+            try:
+                Task(**vars(self._task))
+                storage.update_task(self._task)
+            except ValueError as exc:
+                self._error_label.configure(text=str(exc))
+                return
 
         self._on_save()
         self.destroy()

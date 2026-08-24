@@ -15,7 +15,7 @@ Keeping it here means: one place to fix, one place to test.
 """
 
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from collections import Counter
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -103,3 +103,49 @@ def get_completion_rate(tasks: list[Task]) -> int:
         return 0
     done = sum(1 for t in tasks if t.status == "Done")
     return round((done / len(tasks)) * 100)
+
+
+XP_BY_DIFFICULTY = {"Easy": 10, "Medium": 25, "Hard": 50}
+
+
+def task_xp(task: Task) -> int:
+    """Return the XP awarded for a completed task."""
+    return XP_BY_DIFFICULTY.get(task.difficulty, XP_BY_DIFFICULTY["Medium"])
+
+
+def get_skill_xp(tasks: list[Task]) -> dict[str, int]:
+    """Return accumulated XP by skill for completed tasks."""
+    totals = Counter()
+    for task in tasks:
+        if task.status == "Done" and task.skill:
+            totals[task.skill] += task_xp(task)
+    return dict(totals)
+
+
+def get_category_completion(tasks: list[Task]) -> dict[str, int]:
+    """Return completion percentages for categories represented by tasks."""
+    grouped: dict[str, list[Task]] = {}
+    for task in tasks:
+        grouped.setdefault(task.category, []).append(task)
+    return {
+        category: round(sum(t.status == "Done" for t in group) / len(group) * 100)
+        for category, group in grouped.items()
+    }
+
+
+def get_weekly_velocity(tasks: list[Task], weeks: int = 8) -> list[int]:
+    """Return completed-task counts for each of the last ``weeks`` weeks."""
+    today = date.today()
+    current_week = today - timedelta(days=today.weekday())
+    counts = [0] * weeks
+    for task in tasks:
+        if task.status != "Done" or not task.completed_at:
+            continue
+        try:
+            completed = date.fromisoformat(task.completed_at)
+        except ValueError:
+            continue
+        age = (current_week - (completed - timedelta(days=completed.weekday()))).days // 7
+        if 0 <= age < weeks:
+            counts[weeks - age - 1] += 1
+    return counts

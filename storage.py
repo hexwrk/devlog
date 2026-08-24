@@ -15,6 +15,10 @@ from datetime import date
 from models import Task
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "tasks.json")
+LEGACY_CATEGORIES = {
+    "Setup": "Project", "Frontend": "Project", "Backend": "Project",
+    "DevOps": "Lab", "Design": "Project", "Testing": "Lab", "Other": "Study",
+}
 
 
 def _read_raw() -> list[dict]:
@@ -34,7 +38,22 @@ def _write_raw(data: list[dict]) -> None:
 
 def load_tasks() -> list[Task]:
     """Return all tasks from disk as Task objects."""
-    return [Task(**row) for row in _read_raw()]
+    tasks = []
+    for row in _read_raw():
+        data = dict(row)
+        data["category"] = LEGACY_CATEGORIES.get(data.get("category"), data.get("category"))
+        data.setdefault("resources", [])
+        if data.get("repo_url"):
+            data["resources"].append(data.pop("repo_url"))
+        else:
+            data.pop("repo_url", None)
+        data.setdefault("difficulty", "Medium")
+        data.setdefault("duration_minutes", 60)
+        try:
+            tasks.append(Task(**data))
+        except (TypeError, ValueError):
+            continue
+    return tasks
 
 
 def save_task(task: Task) -> None:

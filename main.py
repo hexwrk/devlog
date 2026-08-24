@@ -3,6 +3,7 @@ DevLog — Phase 2 & 3 App Shell
 """
 
 import customtkinter as ctk
+from pathlib import Path
 from PIL import Image
 from views.board import BoardView
 from views.dashboard import DashboardView
@@ -48,8 +49,9 @@ class DevLogApp(ctk.CTk):
 
     def __init__(self):
         super().__init__()
+        self._base_dir = Path(__file__).resolve().parent
         self.title("DevLog")
-        self.after(200, lambda: self.iconbitmap("devlog.ico"))
+        self.after(200, self._set_icon)
         self.geometry("1100x700")
         self.minsize(900, 600)
         self.configure(fg_color=MAIN_BG)
@@ -81,7 +83,7 @@ class DevLogApp(ctk.CTk):
 
         # Responsive sidebar background image
         try:
-            self._sidebar_bg_raw = Image.open("sidebar_bg.png")
+            self._sidebar_bg_raw = Image.open(self._base_dir / "sidebar_bg.png")
             self._sidebar_bg_label = ctk.CTkLabel(self._sidebar, text="")
             self._sidebar_bg_label.place(x=0, y=0, relwidth=1, relheight=1)
             self._sidebar.bind("<Configure>", self._resize_sidebar_bg)
@@ -157,7 +159,7 @@ class DevLogApp(ctk.CTk):
 
         # Responsive board background image
         try:
-            self._board_bg_raw = Image.open("board_bg.png")
+            self._board_bg_raw = Image.open(self._base_dir / "board_bg.png")
             self._board_bg_label = ctk.CTkLabel(self._main_area, text="")
             self._board_bg_label.place(x=0, y=0, relwidth=1, relheight=1)
             self._main_area.bind("<Configure>", self._resize_board_bg)
@@ -176,6 +178,12 @@ class DevLogApp(ctk.CTk):
             pass
 
     # ── View switching ────────────────────────────────────────────────────────
+
+    def _set_icon(self):
+        try:
+            self.iconbitmap(str(self._base_dir / "devlog.ico"))
+        except Exception:
+            pass
 
     def _show_view(self, key: str):
         if key == self._current_view:

@@ -1,1 +1,3 @@
-from models.task import Task
+from models.task import CATEGORIES, DIFFICULTIES, Task
+
+__all__ = ["Task", "CATEGORIES", "DIFFICULTIES"]
