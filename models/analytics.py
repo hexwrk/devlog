@@ -133,6 +133,16 @@ def get_category_completion(tasks: list[Task]) -> dict[str, int]:
     }
 
 
+XP_PER_LEVEL = 100
+
+
+def get_level_progress(total_xp: int) -> tuple[int, int, int]:
+    """Return (level, xp_into_level, xp_for_next_level). 100 XP per level."""
+    level = total_xp // XP_PER_LEVEL + 1
+    xp_into_level = total_xp % XP_PER_LEVEL
+    return level, xp_into_level, XP_PER_LEVEL
+
+
 def get_weekly_velocity(tasks: list[Task], weeks: int = 8) -> list[int]:
     """Return completed-task counts for each of the last ``weeks`` weeks."""
     today = date.today()

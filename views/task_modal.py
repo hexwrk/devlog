@@ -4,29 +4,30 @@ Includes: repo URL field + drag & drop file attachments
 """
 
 import os
+from pathlib import Path
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog
 import storage
+import theme
 from models import CATEGORIES, DIFFICULTIES, Task
 
-MODAL_BG     = "#1C1C1E"
-INPUT_BG     = "#2C2C2E"
-TEXT_PRIMARY = "#F5F5F7"
-TEXT_MUTED   = "#6E6E73"
-ACCENT       = "#7C5CFC"
-ERROR_RED    = "#FC5C7D"
-DROP_BG      = "#242426"
-DROP_HOVER   = "#2A2A4A"
+_ICON_PATH = Path(__file__).resolve().parent.parent / "devlog.ico"
+
+MODAL_BG     = theme.PANEL
+INPUT_BG     = theme.CARD
+TEXT_PRIMARY = theme.TEXT
+TEXT_MUTED   = theme.TEXT_MUTED
+ACCENT       = theme.PRIMARY
+ERROR_RED    = theme.DANGER
+DROP_BG      = theme.CARD
+DROP_HOVER   = theme.CARD_HOVER
 
 SKILLS     = ["Python", "Git", "SQL", "CustomTkinter", "HTML", "CSS",
               "JavaScript", "Docker", "Linux", "Networking", "Web Security",
               "Cryptography", "Reverse Engineering", "Other"]
 STATUSES   = ["Todo", "In Progress", "Done", "Blocked"]
-COLOURS = {
-    "Lab": "#00D4FF", "Study": "#43E97B", "Project": "#7C5CFC",
-    "CTF": "#FC5C7D", "Reading": "#F7B731", "Revision": "#FF9500",
-}
+COLOURS = theme.CATEGORY_COLOURS
 
 
 class TaskModal(ctk.CTkToplevel):
@@ -45,7 +46,7 @@ class TaskModal(ctk.CTkToplevel):
         self.minsize(500, 600)
         self.resizable(False, True)
         self.configure(fg_color=MODAL_BG)
-        self.after(200, lambda: self.iconbitmap("devlog.ico"))
+        self.after(200, self._set_icon)
 
         self.grab_set()
         self.focus_set()
@@ -54,11 +55,17 @@ class TaskModal(ctk.CTkToplevel):
         if self._mode == "edit":
             self._prefill()
 
+    def _set_icon(self):
+        try:
+            self.iconbitmap(str(_ICON_PATH))
+        except Exception:
+            pass
+
     # ── UI ────────────────────────────────────────────────────────────────────
 
     def _build(self):
         scroll = ctk.CTkScrollableFrame(
-            self, fg_color=MODAL_BG, scrollbar_button_color="#3A3A3C"
+            self, fg_color=MODAL_BG, scrollbar_button_color=theme.BORDER
         )
         scroll.pack(fill="both", expand=True)
 
@@ -84,7 +91,7 @@ class TaskModal(ctk.CTkToplevel):
 
         self._resources_box = ctk.CTkTextbox(
             scroll, height=58, corner_radius=8,
-            fg_color=INPUT_BG, border_color="#3A3A3C",
+            fg_color=INPUT_BG, border_color=theme.BORDER,
             text_color=TEXT_PRIMARY,
             font=ctk.CTkFont(family="Segoe UI", size=13),
         )
@@ -98,7 +105,7 @@ class TaskModal(ctk.CTkToplevel):
         # Drop zone frame
         self._drop_frame = ctk.CTkFrame(
             scroll, fg_color=DROP_BG, corner_radius=10,
-            border_color="#3A3A3C", border_width=1,
+            border_color=theme.BORDER, border_width=1,
         )
         self._drop_frame.pack(fill="x", pady=(0, 4), **pad)
 
@@ -114,7 +121,7 @@ class TaskModal(ctk.CTkToplevel):
             self._drop_frame,
             text="Browse",
             width=80, height=28, corner_radius=6,
-            fg_color=ACCENT, hover_color="#5A3FD4",
+            fg_color=ACCENT, hover_color=theme.PRIMARY_HOVER,
             text_color="#FFFFFF",
             font=ctk.CTkFont(size=12),
             command=self._browse_files,
@@ -153,7 +160,7 @@ class TaskModal(ctk.CTkToplevel):
         ctk.CTkButton(
             btn_row, text="Cancel",
             width=100, height=38, corner_radius=8,
-            fg_color="#2C2C2E", hover_color="#3A3A3C",
+            fg_color=theme.CARD, hover_color=theme.BORDER,
             text_color=TEXT_PRIMARY,
             command=self.destroy,
         ).pack(side="left")
@@ -162,7 +169,7 @@ class TaskModal(ctk.CTkToplevel):
             btn_row,
             text="Save" if self._mode == "edit" else "Add Task",
             width=130, height=38, corner_radius=8,
-            fg_color=ACCENT, hover_color="#5A3FD4",
+            fg_color=ACCENT, hover_color=theme.PRIMARY_HOVER,
             text_color="#FFFFFF",
             font=ctk.CTkFont(weight="bold"),
             command=self._save,
@@ -173,7 +180,7 @@ class TaskModal(ctk.CTkToplevel):
                      text_color=TEXT_MUTED).pack(anchor="w", pady=(10, 2), **pad)
         entry = ctk.CTkEntry(
             parent, height=36, corner_radius=8,
-            fg_color=INPUT_BG, border_color="#3A3A3C",
+            fg_color=INPUT_BG, border_color=theme.BORDER,
             text_color=TEXT_PRIMARY,
             font=ctk.CTkFont(family="Segoe UI", size=13),
         )
@@ -188,7 +195,7 @@ class TaskModal(ctk.CTkToplevel):
         ctk.CTkOptionMenu(
             parent, variable=var, values=values,
             height=36, corner_radius=8,
-            fg_color=INPUT_BG, button_color="#3A3A3C",
+            fg_color=INPUT_BG, button_color=theme.BORDER,
             text_color=TEXT_PRIMARY,
         ).pack(fill="x", **pad)
 
@@ -253,7 +260,7 @@ class TaskModal(ctk.CTkToplevel):
             return
 
         for path in self._attachments:
-            row = ctk.CTkFrame(self._attach_list_frame, fg_color="#2C2C2E", corner_radius=6)
+            row = ctk.CTkFrame(self._attach_list_frame, fg_color=theme.CARD, corner_radius=6)
             row.pack(fill="x", pady=2)
 
             filename = os.path.basename(path)
@@ -266,7 +273,7 @@ class TaskModal(ctk.CTkToplevel):
             # Open file button
             ctk.CTkButton(
                 row, text="↗", width=28, height=24, corner_radius=4,
-                fg_color="transparent", hover_color="#3A3A3C",
+                fg_color="transparent", hover_color=theme.BORDER,
                 text_color=TEXT_MUTED,
                 command=lambda p=path: self._open_attachment(p),
             ).pack(side="right", padx=(0, 4))
@@ -274,8 +281,8 @@ class TaskModal(ctk.CTkToplevel):
             # Remove button
             ctk.CTkButton(
                 row, text="✕", width=28, height=24, corner_radius=4,
-                fg_color="transparent", hover_color="#4A1A1A",
-                text_color="#FC5C7D",
+                fg_color="transparent", hover_color=theme.STATUS["Blocked"]["bg"],
+                text_color=theme.DANGER,
                 command=lambda p=path: self._remove_attachment(p),
             ).pack(side="right", padx=(0, 2))
 
@@ -329,7 +336,7 @@ class TaskModal(ctk.CTkToplevel):
             try:
                 task = Task(
                     id=storage.next_id(), title=title, category=cat,
-                    category_colour=COLOURS.get(cat, "#888888"),
+                    category_colour=COLOURS.get(cat, theme.TEXT_MUTED),
                     skill=self._skill_var.get(), status=self._status_var.get(),
                     notes=notes, resources=resources, attachments=self._attachments,
                     difficulty=self._difficulty_var.get(),
@@ -341,7 +348,7 @@ class TaskModal(ctk.CTkToplevel):
         else:
             self._task.title           = title
             self._task.category        = cat
-            self._task.category_colour = COLOURS.get(cat, "#888888")
+            self._task.category_colour = COLOURS.get(cat, theme.TEXT_MUTED)
             self._task.skill           = self._skill_var.get()
             self._task.status          = self._status_var.get()
             self._task.notes           = notes
