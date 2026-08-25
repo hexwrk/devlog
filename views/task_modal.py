@@ -1,27 +1,25 @@
 """
 views/task_modal.py — Add / Edit Task Modal
-Includes: repo URL field + drag & drop file attachments
+Includes: resource URLs, due date, and drag & drop file attachments.
 """
 
 import os
+import re
 from pathlib import Path
+from datetime import date
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog
 import storage
 import theme
 from models import CATEGORIES, DIFFICULTIES, Task
+from views.components import ui
 
 _ICON_PATH = Path(__file__).resolve().parent.parent / "devlog.ico"
 
-MODAL_BG     = theme.PANEL
-INPUT_BG     = theme.CARD
-TEXT_PRIMARY = theme.TEXT
-TEXT_MUTED   = theme.TEXT_MUTED
-ACCENT       = theme.PRIMARY
-ERROR_RED    = theme.DANGER
-DROP_BG      = theme.CARD
-DROP_HOVER   = theme.CARD_HOVER
+INPUT_BG = theme.CARD
+DROP_BG    = theme.CARD
+DROP_HOVER = theme.CARD_HOVER
 
 SKILLS     = ["Python", "Git", "SQL", "CustomTkinter", "HTML", "CSS",
               "JavaScript", "Docker", "Linux", "Networking", "Web Security",
@@ -32,7 +30,7 @@ COLOURS = theme.CATEGORY_COLOURS
 
 class TaskModal(ctk.CTkToplevel):
 
-    def __init__(self, parent, task: Task | None, on_save):
+    def __init__(self, parent, task: Task | None, on_save, default_category: str | None = None):
         super().__init__(parent)
 
         self._task        = task
@@ -42,10 +40,10 @@ class TaskModal(ctk.CTkToplevel):
 
         title = "Edit Task" if self._mode == "edit" else "Add Task"
         self.title(title)
-        self.geometry("500x680")
-        self.minsize(500, 600)
+        self.geometry("500x720")
+        self.minsize(500, 620)
         self.resizable(False, True)
-        self.configure(fg_color=MODAL_BG)
+        self.configure(fg_color=theme.PANEL)
         self.after(200, self._set_icon)
 
         self.grab_set()
@@ -54,6 +52,8 @@ class TaskModal(ctk.CTkToplevel):
         self._build()
         if self._mode == "edit":
             self._prefill()
+        elif default_category and default_category in CATEGORIES:
+            self._category_var.set(default_category)
 
     def _set_icon(self):
         try:
@@ -65,7 +65,7 @@ class TaskModal(ctk.CTkToplevel):
 
     def _build(self):
         scroll = ctk.CTkScrollableFrame(
-            self, fg_color=MODAL_BG, scrollbar_button_color=theme.BORDER
+            self, fg_color=theme.PANEL, scrollbar_button_color=theme.BORDER
         )
         scroll.pack(fill="both", expand=True)
 
@@ -74,8 +74,8 @@ class TaskModal(ctk.CTkToplevel):
         ctk.CTkLabel(
             scroll,
             text="Edit Task" if self._mode == "edit" else "New Task",
-            font=ctk.CTkFont(family="Segoe UI", size=20, weight="bold"),
-            text_color=TEXT_PRIMARY,
+            font=theme.font(20, "bold"),
+            text_color=theme.TEXT,
         ).pack(anchor="w", pady=(24, 16), **pad)
 
         self._title_entry = self._field(scroll, "Title", pad)
@@ -83,47 +83,42 @@ class TaskModal(ctk.CTkToplevel):
         self._dropdown(scroll, "Skill",    SKILLS,      pad)
         self._dropdown(scroll, "Status",   STATUSES,    pad)
         self._dropdown(scroll, "Difficulty", DIFFICULTIES, pad)
+        self._due_date_entry = self._field(scroll, "Due Date (YYYY-MM-DD, optional)", pad)
 
         # ── Resource URLs ─────────────────────────────────────────────────────
         ctk.CTkLabel(scroll, text="Resource URLs (one per line)",
-                     font=ctk.CTkFont(size=12), text_color=TEXT_MUTED,
+                     font=theme.FONT_META(), text_color=theme.TEXT_MUTED,
                      ).pack(anchor="w", pady=(10, 2), **pad)
 
         self._resources_box = ctk.CTkTextbox(
-            scroll, height=58, corner_radius=8,
+            scroll, height=58, corner_radius=theme.RADIUS_SM,
             fg_color=INPUT_BG, border_color=theme.BORDER,
-            text_color=TEXT_PRIMARY,
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            text_color=theme.TEXT,
+            font=theme.FONT_BODY(),
         )
         self._resources_box.pack(fill="x", **pad)
 
         # ── Drag & Drop zone ──────────────────────────────────────────────────
         ctk.CTkLabel(scroll, text="Attachments",
-                     font=ctk.CTkFont(size=12), text_color=TEXT_MUTED,
+                     font=theme.FONT_META(), text_color=theme.TEXT_MUTED,
                      ).pack(anchor="w", pady=(14, 2), **pad)
 
-        # Drop zone frame
         self._drop_frame = ctk.CTkFrame(
-            scroll, fg_color=DROP_BG, corner_radius=10,
+            scroll, fg_color=DROP_BG, corner_radius=theme.RADIUS_MD,
             border_color=theme.BORDER, border_width=1,
         )
         self._drop_frame.pack(fill="x", pady=(0, 4), **pad)
 
         self._drop_label = ctk.CTkLabel(
             self._drop_frame,
-            text="📂  Drop files here  or",
-            font=ctk.CTkFont(family="Segoe UI", size=13),
-            text_color=TEXT_MUTED,
+            text=f"{theme.icon('folder')}  Drop files here  or",
+            font=theme.FONT_BODY(),
+            text_color=theme.TEXT_MUTED,
         )
         self._drop_label.pack(side="left", padx=(16, 8), pady=14)
 
-        ctk.CTkButton(
-            self._drop_frame,
-            text="Browse",
-            width=80, height=28, corner_radius=6,
-            fg_color=ACCENT, hover_color=theme.PRIMARY_HOVER,
-            text_color="#FFFFFF",
-            font=ctk.CTkFont(size=12),
+        ui.SecondaryButton(
+            self._drop_frame, text="Browse", width=80, height=28,
             command=self._browse_files,
         ).pack(side="left", pady=14)
 
@@ -137,19 +132,19 @@ class TaskModal(ctk.CTkToplevel):
 
         # Notes
         ctk.CTkLabel(scroll, text="Notes (optional)",
-                     font=ctk.CTkFont(size=12), text_color=TEXT_MUTED,
+                     font=theme.FONT_META(), text_color=theme.TEXT_MUTED,
                      ).pack(anchor="w", pady=(10, 2), **pad)
         self._notes_box = ctk.CTkTextbox(
-            scroll, width=444, height=80, corner_radius=8,
-            fg_color=INPUT_BG, text_color=TEXT_PRIMARY,
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            scroll, height=80, corner_radius=theme.RADIUS_SM,
+            fg_color=INPUT_BG, text_color=theme.TEXT,
+            font=theme.FONT_BODY(),
         )
-        self._notes_box.pack(**pad)
+        self._notes_box.pack(fill="x", **pad)
 
         # Error
         self._error_label = ctk.CTkLabel(
-            scroll, text="", text_color=ERROR_RED,
-            font=ctk.CTkFont(size=12),
+            scroll, text="", text_color=theme.DANGER,
+            font=theme.FONT_META(),
         )
         self._error_label.pack(pady=(6, 0))
 
@@ -159,44 +154,41 @@ class TaskModal(ctk.CTkToplevel):
 
         ctk.CTkButton(
             btn_row, text="Cancel",
-            width=100, height=38, corner_radius=8,
+            width=100, height=38, corner_radius=theme.RADIUS_SM,
             fg_color=theme.CARD, hover_color=theme.BORDER,
-            text_color=TEXT_PRIMARY,
+            text_color=theme.TEXT, font=theme.FONT_BODY(),
             command=self.destroy,
         ).pack(side="left")
 
-        ctk.CTkButton(
+        ui.PrimaryButton(
             btn_row,
             text="Save" if self._mode == "edit" else "Add Task",
-            width=130, height=38, corner_radius=8,
-            fg_color=ACCENT, hover_color=theme.PRIMARY_HOVER,
-            text_color="#FFFFFF",
-            font=ctk.CTkFont(weight="bold"),
+            width=130, height=38,
             command=self._save,
         ).pack(side="right")
 
     def _field(self, parent, label, pad) -> ctk.CTkEntry:
-        ctk.CTkLabel(parent, text=label, font=ctk.CTkFont(size=12),
-                     text_color=TEXT_MUTED).pack(anchor="w", pady=(10, 2), **pad)
+        ctk.CTkLabel(parent, text=label, font=theme.FONT_META(),
+                     text_color=theme.TEXT_MUTED).pack(anchor="w", pady=(10, 2), **pad)
         entry = ctk.CTkEntry(
-            parent, height=36, corner_radius=8,
+            parent, height=36, corner_radius=theme.RADIUS_SM,
             fg_color=INPUT_BG, border_color=theme.BORDER,
-            text_color=TEXT_PRIMARY,
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            text_color=theme.TEXT,
+            font=theme.FONT_BODY(),
         )
         entry.pack(fill="x", **pad)
         return entry
 
     def _dropdown(self, parent, label, values, pad):
-        ctk.CTkLabel(parent, text=label, font=ctk.CTkFont(size=12),
-                     text_color=TEXT_MUTED).pack(anchor="w", pady=(10, 2), **pad)
+        ctk.CTkLabel(parent, text=label, font=theme.FONT_META(),
+                     text_color=theme.TEXT_MUTED).pack(anchor="w", pady=(10, 2), **pad)
         var = ctk.StringVar(value=values[0])
         setattr(self, f"_{label.lower()}_var", var)
         ctk.CTkOptionMenu(
             parent, variable=var, values=values,
-            height=36, corner_radius=8,
+            height=36, corner_radius=theme.RADIUS_SM,
             fg_color=INPUT_BG, button_color=theme.BORDER,
-            text_color=TEXT_PRIMARY,
+            text_color=theme.TEXT, font=theme.FONT_BODY(),
         ).pack(fill="x", **pad)
 
     # ── Drag & drop ───────────────────────────────────────────────────────────
@@ -221,7 +213,6 @@ class TaskModal(ctk.CTkToplevel):
     def _on_drop(self, event):
         """Parse dropped file paths from the event data string."""
         self._drop_frame.configure(fg_color=DROP_BG)
-        # tkinterdnd2 returns paths wrapped in {} if they contain spaces
         raw = event.data
         paths = self._parse_drop_paths(raw)
         for p in paths:
@@ -231,7 +222,6 @@ class TaskModal(ctk.CTkToplevel):
 
     def _parse_drop_paths(self, raw: str) -> list[str]:
         """Handle both space-separated and {brace-wrapped} path formats."""
-        import re
         paths = re.findall(r'\{([^}]+)\}|(\S+)', raw)
         return [p[0] or p[1] for p in paths]
 
@@ -254,8 +244,8 @@ class TaskModal(ctk.CTkToplevel):
             ctk.CTkLabel(
                 self._attach_list_frame,
                 text="No files attached yet.",
-                font=ctk.CTkFont(size=11),
-                text_color=TEXT_MUTED,
+                font=theme.FONT_META(),
+                text_color=theme.TEXT_MUTED,
             ).pack(anchor="w", pady=(4, 0))
             return
 
@@ -265,26 +255,17 @@ class TaskModal(ctk.CTkToplevel):
 
             filename = os.path.basename(path)
             ctk.CTkLabel(
-                row, text=f"📄  {filename}",
-                font=ctk.CTkFont(size=12), text_color=TEXT_PRIMARY,
+                row, text=f"{theme.icon('file')}  {filename}",
+                font=theme.FONT_META(), text_color=theme.TEXT,
                 anchor="w",
             ).pack(side="left", padx=10, pady=6, fill="x", expand=True)
 
-            # Open file button
-            ctk.CTkButton(
-                row, text="↗", width=28, height=24, corner_radius=4,
-                fg_color="transparent", hover_color=theme.BORDER,
-                text_color=TEXT_MUTED,
-                command=lambda p=path: self._open_attachment(p),
-            ).pack(side="right", padx=(0, 4))
-
-            # Remove button
-            ctk.CTkButton(
-                row, text="✕", width=28, height=24, corner_radius=4,
-                fg_color="transparent", hover_color=theme.STATUS["Blocked"]["bg"],
-                text_color=theme.DANGER,
-                command=lambda p=path: self._remove_attachment(p),
-            ).pack(side="right", padx=(0, 2))
+            ui.IconButton(row, theme.icon("external"), lambda p=path: self._open_attachment(p), size=26).pack(
+                side="right", padx=(0, 4)
+            )
+            close_btn = ui.IconButton(row, theme.icon("close"), lambda p=path: self._remove_attachment(p), size=26)
+            close_btn.configure(text_color=theme.DANGER, hover_color=theme.STATUS["Blocked"]["bg"])
+            close_btn.pack(side="right", padx=(0, 2))
 
     def _remove_attachment(self, path: str):
         if path in self._attachments:
@@ -299,14 +280,6 @@ class TaskModal(ctk.CTkToplevel):
             subprocess.Popen(["xdg-open", path], stdout=subprocess.DEVNULL,
                              stderr=subprocess.DEVNULL)
 
-    def _open_repo(self):
-        urls = self._resources_box.get("1.0", "end").splitlines()
-        url = urls[0].strip() if urls else ""
-        from urllib.parse import urlparse
-        if urlparse(url).scheme in {"http", "https"} and urlparse(url).netloc:
-            import webbrowser
-            webbrowser.open(url)
-
     # ── Prefill ───────────────────────────────────────────────────────────────
 
     def _prefill(self):
@@ -315,6 +288,9 @@ class TaskModal(ctk.CTkToplevel):
         if t.category in CATEGORIES: self._category_var.set(t.category)
         if t.skill    in SKILLS:     self._skill_var.set(t.skill)
         if t.status   in STATUSES:   self._status_var.set(t.status)
+        if t.difficulty in DIFFICULTIES: self._difficulty_var.set(t.difficulty)
+        if t.due_date:
+            self._due_date_entry.insert(0, t.due_date)
         if t.resources:
             self._resources_box.insert("1.0", "\n".join(t.resources))
         if t.notes:
@@ -322,11 +298,26 @@ class TaskModal(ctk.CTkToplevel):
 
     # ── Save ──────────────────────────────────────────────────────────────────
 
+    def _valid_due_date(self, value: str) -> bool:
+        if not value:
+            return True
+        try:
+            date.fromisoformat(value)
+            return True
+        except ValueError:
+            return False
+
     def _save(self):
         title = self._title_entry.get().strip()
         if not title:
-            self._error_label.configure(text="⚠  Title cannot be empty.")
+            self._error_label.configure(text=f"{theme.icon('close')}  Title cannot be empty.")
             return
+
+        due_date = self._due_date_entry.get().strip()
+        if not self._valid_due_date(due_date):
+            self._error_label.configure(text=f"{theme.icon('close')}  Due date must look like YYYY-MM-DD.")
+            return
+        due_date = due_date or None
 
         notes    = self._notes_box.get("1.0", "end").strip()
         cat      = self._category_var.get()
@@ -339,7 +330,7 @@ class TaskModal(ctk.CTkToplevel):
                     category_colour=COLOURS.get(cat, theme.TEXT_MUTED),
                     skill=self._skill_var.get(), status=self._status_var.get(),
                     notes=notes, resources=resources, attachments=self._attachments,
-                    difficulty=self._difficulty_var.get(),
+                    difficulty=self._difficulty_var.get(), due_date=due_date,
                 )
                 storage.save_task(task)
             except ValueError as exc:
@@ -355,6 +346,7 @@ class TaskModal(ctk.CTkToplevel):
             self._task.resources       = resources
             self._task.attachments     = self._attachments
             self._task.difficulty      = self._difficulty_var.get()
+            self._task.due_date        = due_date
             try:
                 Task(**vars(self._task))
                 storage.update_task(self._task)

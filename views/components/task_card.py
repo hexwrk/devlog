@@ -1,5 +1,5 @@
 """
-views/components/task_card.py — Modern SaaS-style task row
+views/components/task_card.py — Compact task row / kanban card
 """
 
 from typing import Callable
@@ -7,6 +7,7 @@ import tkinter as tk
 import customtkinter as ctk
 from models import Task
 import theme
+from views.components import ui
 
 
 class TaskCard(ctk.CTkFrame):
@@ -17,17 +18,19 @@ class TaskCard(ctk.CTkFrame):
         task: Task,
         on_edit:   Callable[[Task], None],
         on_delete: Callable[[str],  None],
+        on_advance: Callable[[Task], None] | None = None,
         compact:   bool = False,
     ):
         super().__init__(
-            parent, fg_color=theme.CARD, corner_radius=12,
+            parent, fg_color=theme.CARD, corner_radius=theme.RADIUS_MD,
             border_width=1, border_color=theme.BORDER,
         )
 
-        self._task      = task
-        self._on_edit    = on_edit
-        self._on_delete  = on_delete
-        self._compact    = compact
+        self._task       = task
+        self._on_edit     = on_edit
+        self._on_delete   = on_delete
+        self._on_advance  = on_advance
+        self._compact     = compact
 
         if compact:
             self._build_compact()
@@ -45,13 +48,8 @@ class TaskCard(ctk.CTkFrame):
         outer.pack(fill="x", padx=pad, pady=theme.SPACE_MD)
 
         ctk.CTkLabel(
-            outer, text="⋮⋮",
-            font=theme.font(13), text_color=theme.TEXT_MUTED,
-        ).pack(side="left", padx=(0, theme.SPACE_MD))
-
-        ctk.CTkLabel(
-            outer, text=theme.skill_icon(task.skill),
-            font=theme.font(15), text_color=theme.TEXT_SECONDARY, width=20,
+            outer, text=theme.icon("skill"),
+            font=theme.font(theme.ICON_SIZE_STD), text_color=theme.TEXT_SECONDARY, width=20,
         ).pack(side="left", padx=(0, theme.SPACE_MD))
 
         left = ctk.CTkFrame(outer, fg_color="transparent")
@@ -65,21 +63,21 @@ class TaskCard(ctk.CTkFrame):
         badges = ctk.CTkFrame(left, fg_color="transparent")
         badges.pack(anchor="w", pady=(theme.SPACE_XS, 0))
 
-        self._category_badge(badges, task)
-        self._skill_badge(badges, task)
-        self._status_pill(badges, task)
+        ui.CategoryDot(badges, task.category).pack(side="left", padx=(0, theme.SPACE_MD))
+        ui.SkillBadge(badges, task.skill).pack(side="left", padx=(0, theme.SPACE_SM))
+        ui.StatusBadge(badges, task.status).pack(side="left")
 
         right = ctk.CTkFrame(outer, fg_color="transparent")
         right.pack(side="right", padx=(theme.SPACE_MD, 0))
 
         if task.due_date:
             ctk.CTkLabel(
-                right, text=task.due_date,
+                right, text=f"{theme.icon('calendar')}  {task.due_date}",
                 font=theme.FONT_META(), text_color=theme.TEXT_MUTED,
             ).pack(side="left", padx=(0, theme.SPACE_MD))
 
-        self._icon_button(right, "✎", lambda: self._on_edit(task)).pack(side="left", padx=(0, 4))
-        self._icon_button(right, "⋯", self._open_overflow_menu).pack(side="left")
+        ui.IconButton(right, theme.icon("edit"), lambda: self._on_edit(task), size=26).pack(side="left", padx=(0, 4))
+        ui.IconButton(right, theme.icon("more"), self._open_overflow_menu, size=26).pack(side="left")
 
     # ── Compact (kanban column) layout ───────────────────────────────────────
 
@@ -94,57 +92,20 @@ class TaskCard(ctk.CTkFrame):
         top.pack(fill="x")
 
         ctk.CTkLabel(
-            top, text=theme.skill_icon(task.skill),
-            font=theme.font(13), text_color=theme.TEXT_SECONDARY,
-        ).pack(side="left", padx=(0, theme.SPACE_XS))
-
-        ctk.CTkLabel(
             top, text=task.title,
             font=theme.font(13, "bold"), text_color=theme.TEXT, anchor="w",
-            wraplength=90, justify="left",
+            wraplength=100, justify="left",
         ).pack(side="left", fill="x", expand=True)
 
-        self._icon_button(top, "⋯", self._open_overflow_menu).pack(side="right")
+        ui.IconButton(top, theme.icon("more"), self._open_overflow_menu, size=22).pack(side="right")
+
+        meta = ctk.CTkFrame(outer, fg_color="transparent")
+        meta.pack(anchor="w", pady=(theme.SPACE_XS, 0))
+        ui.CategoryDot(meta, task.category).pack(anchor="w")
 
         badges = ctk.CTkFrame(outer, fg_color="transparent")
         badges.pack(anchor="w", pady=(theme.SPACE_XS, 0))
-        self._status_pill(badges, task)
-
-    # ── Shared badge builders ────────────────────────────────────────────────
-
-    def _category_badge(self, parent, task):
-        colour = theme.CATEGORY_COLOURS.get(task.category, theme.TEXT_MUTED)
-        icon = theme.CATEGORY_ICONS.get(task.category, "▣")
-        ctk.CTkLabel(
-            parent, text=f" {icon} {task.category} ",
-            font=theme.FONT_META(), fg_color=theme.PANEL,
-            text_color=colour, corner_radius=6,
-        ).pack(side="left", padx=(0, theme.SPACE_SM))
-
-    def _skill_badge(self, parent, task):
-        ctk.CTkLabel(
-            parent, text=f" {task.skill} ",
-            font=theme.FONT_META(), fg_color=theme.PANEL,
-            text_color=theme.TEXT_MUTED, corner_radius=6,
-        ).pack(side="left", padx=(0, theme.SPACE_SM))
-
-    def _status_pill(self, parent, task):
-        info = theme.STATUS.get(task.status, theme.STATUS["Todo"])
-        ctk.CTkLabel(
-            parent, text=f" {info['icon']} {task.status} ",
-            font=theme.FONT_META(), fg_color=info["bg"],
-            text_color=info["color"], corner_radius=999,
-        ).pack(side="left")
-
-    def _icon_button(self, parent, symbol, command):
-        return ctk.CTkButton(
-            parent, text=symbol,
-            width=26, height=26, corner_radius=6,
-            fg_color="transparent", hover_color=theme.PANEL,
-            text_color=theme.TEXT_MUTED,
-            font=theme.font(13),
-            command=command,
-        )
+        ui.StatusBadge(badges, task.status).pack(side="left")
 
     # ── Overflow menu ─────────────────────────────────────────────────────────
 
@@ -156,6 +117,9 @@ class TaskCard(ctk.CTkFrame):
             bd=0,
         )
         menu.add_command(label="Edit", command=lambda: self._on_edit(self._task))
+        if self._on_advance and self._task.status != "Done":
+            nxt = theme.next_status(self._task.status)
+            menu.add_command(label=f"Move to {nxt}", command=lambda: self._on_advance(self._task))
         menu.add_command(label="Delete", command=lambda: self._on_delete(self._task.id))
         try:
             menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
@@ -165,3 +129,13 @@ class TaskCard(ctk.CTkFrame):
     def _bind_hover(self):
         self.bind("<Enter>", lambda e: self.configure(fg_color=theme.CARD_HOVER))
         self.bind("<Leave>", lambda e: self.configure(fg_color=theme.CARD))
+
+
+def render_task_rows(container, tasks: list[Task], on_edit, on_delete, on_advance=None):
+    """Shared list-view row renderer used by both Board and the Projects detail page."""
+    for task in tasks:
+        card = TaskCard(
+            container, task=task,
+            on_edit=on_edit, on_delete=on_delete, on_advance=on_advance,
+        )
+        card.pack(fill="x", pady=5)

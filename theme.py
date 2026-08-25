@@ -10,11 +10,12 @@ import customtkinter as ctk
 
 # ── Colour tokens ────────────────────────────────────────────────────────────
 
-BG              = "#080B12"
-SIDEBAR         = "#0B0F18"
-PANEL           = "#101622"
-CARD            = "#141B27"
-CARD_HOVER      = "#192131"
+BG                = "#080B12"
+SIDEBAR           = "#0B0F18"
+PANEL             = "#101622"
+CARD              = "#141B27"
+CARD_HOVER        = "#192131"
+SURFACE_ELEVATED  = "#1A2231"
 
 BORDER          = "#222B3B"
 
@@ -30,6 +31,13 @@ SUCCESS         = "#22C55E"
 WARNING         = "#F59E0B"
 DANGER          = "#EF4444"
 INFO            = "#3B82F6"
+
+# ── Radius scale ─────────────────────────────────────────────────────────────
+
+RADIUS_SM = 7    # buttons, inputs
+RADIUS_MD = 10   # cards
+RADIUS_LG = 12   # large panels, columns
+RADIUS_PILL = 999
 
 # ── Spacing scale ────────────────────────────────────────────────────────────
 
@@ -50,11 +58,54 @@ def font(size: int, weight: str = "normal") -> ctk.CTkFont:
     return ctk.CTkFont(family=FONT_FAMILY, size=size, weight=weight)
 
 
-FONT_PAGE_TITLE = lambda: font(28, "bold")
-FONT_SECTION    = lambda: font(15, "bold")
-FONT_TASK_TITLE = lambda: font(14, "bold")
-FONT_BODY       = lambda: font(13)
-FONT_META       = lambda: font(11)
+FONT_PAGE_TITLE    = lambda: font(28, "bold")
+FONT_PAGE_SUBTITLE = lambda: font(13)
+FONT_BREADCRUMB    = lambda: font(11)
+FONT_SECTION       = lambda: font(15, "bold")
+FONT_TASK_TITLE    = lambda: font(14, "bold")
+FONT_BODY          = lambda: font(13)
+FONT_META          = lambda: font(11)
+
+# ── Icon glyph system ────────────────────────────────────────────────────────
+# One curated set of monochrome Unicode glyphs, sized via `font()`, used
+# everywhere instead of ad-hoc colourful emoji. Keeps every icon consistent
+# regardless of platform emoji rendering.
+
+ICON_SIZE_NAV     = 15
+ICON_SIZE_STD     = 13
+ICON_SIZE_LARGE   = 17
+
+ICONS = {
+    "overview":     "▥",
+    "board":        "▤",
+    "analytics":    "◭",
+    "projects":     "▣",
+    "settings":     "⚙",
+    "search":       "⌕",
+    "bell":         "◉",
+    "add":          "+",
+    "edit":         "✎",
+    "more":         "⋯",
+    "drag":         "⋮⋮",
+    "calendar":     "▦",
+    "clock":        "◷",
+    "chevron":      "›",
+    "chevron_down": "⌄",
+    "refresh":      "↻",
+    "streak":       "◆",
+    "target":       "◎",
+    "skill":        "◈",
+    "external":     "↗",
+    "file":         "▤",
+    "folder":       "⌸",
+    "close":        "✕",
+    "check":        "✓",
+    "back":         "‹",
+}
+
+
+def icon(name: str) -> str:
+    return ICONS.get(name, "")
 
 # ── Status pills ─────────────────────────────────────────────────────────────
 
@@ -65,33 +116,30 @@ STATUS = {
     "Blocked":     {"icon": "⊗", "color": DANGER,      "bg": "#2A1517"},
 }
 
-# ── Category colours + icons ─────────────────────────────────────────────────
+STATUS_ORDER = ["Todo", "In Progress", "Done", "Blocked"]
+
+
+def next_status(current: str) -> str:
+    """Return the status that follows ``current`` in the workflow, wrapping to Todo."""
+    cycle = ["Todo", "In Progress", "Done"]
+    if current not in cycle:
+        return "Todo"
+    return cycle[(cycle.index(current) + 1) % len(cycle)]
+
+# ── Category colours ─────────────────────────────────────────────────────────
+# Category colour is expressed purely as a small dot next to the label
+# (see views/components/ui.py CategoryDot) rather than a decorative emoji —
+# the colour alone is the identifier.
 
 CATEGORY_COLOURS = {
     "Lab": "#00D4FF", "Study": "#43E97B", "Project": PRIMARY,
     "CTF": "#FC5C7D", "Reading": "#F7B731", "Revision": "#FF9500",
 }
 
-CATEGORY_ICONS = {
-    "Lab": "🧪", "Study": "📖", "Project": "▣",
-    "CTF": "🚩", "Reading": "📚", "Revision": "↺",
-}
-
-# ── Skill → task-type icon mapping ───────────────────────────────────────────
-
-_SKILL_ICON_GROUPS = {
-    "</>": {"Python", "JavaScript", "HTML", "CSS"},
-    "🗄":   {"SQL"},
-    "☁":   {"Docker", "Networking"},
-    "🧪":   {"Web Security", "Cryptography", "Reverse Engineering"},
-    "🔧":  {"Git"},
-    "🖥":  {"CustomTkinter", "Linux"},
-}
-
-_SKILL_TO_ICON = {
-    skill: icon for icon, skills in _SKILL_ICON_GROUPS.items() for skill in skills
-}
+# ── Skill → icon mapping ─────────────────────────────────────────────────────
+# Every skill maps to the same neutral glyph — the skill *name* carries the
+# information; the glyph is just a small visual anchor, not per-skill iconography.
 
 
 def skill_icon(skill: str) -> str:
-    return _SKILL_TO_ICON.get(skill, "▣")
+    return ICONS["skill"]

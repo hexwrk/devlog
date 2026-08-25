@@ -16,8 +16,13 @@ JSON file; there is no account, server, or analytics service.
 	task, validated as `http` or `https` URLs
 - Optional local file attachments
 - Difficulty-based XP: Easy `10`, Medium `25`, Hard `50`
-- Dashboard metrics for streaks, completion rate, status counts, active skills,
-	due-today tasks, total XP, category completion, and weekly velocity
+- An Overview page with weekly progress, XP, recent activity, and a
+	today/status/focus summary
+- An Analytics page with time tracked, completion rate, streaks, and
+	per-category performance
+- A Projects page with a workspace per category (progress, task counts,
+	scoped task list)
+- A Settings page for profile, weekly streak goal, and default board view
 - Category, skill, and status filtering on the task board
 
 ## Requirements
@@ -41,20 +46,25 @@ can be launched from any working directory after installation.
 
 ## Data and privacy
 
-Tasks are stored in `tasks.json` beside the application. The storage layer is
-the only code that reads or writes this file, and malformed records are skipped
-instead of crashing the UI. Resource links are restricted to absolute HTTP(S)
-URLs. Attachments store local paths only; file contents are never uploaded.
+Tasks are stored in `tasks.json` beside the application, and preferences in
+`settings.json`. The storage layer is the only code that reads or writes
+`tasks.json`, and malformed records are skipped instead of crashing the UI.
+Resource links are restricted to absolute HTTP(S) URLs. Attachments store
+local paths only; file contents are never uploaded.
 
 ## Project layout
 
 ```text
-main.py                  Desktop application entry point
+main.py                  App shell: sidebar + header + page router
+theme.py                 Design tokens (colours, spacing, radius, icons)
 models/task.py           Validated task schema and taxonomy
 models/analytics.py      XP, streak, completion, and velocity calculations
-storage.py               JSON persistence and legacy-data migration
-views/                   Board, dashboard, modal, and task-card UI
+storage.py               Task JSON persistence and legacy-data migration
+settings_store.py        Preferences JSON persistence
+views/                   Overview, Board, Analytics, Projects, Settings,
+                          the task modal, and shared design-system components
 tasks.json               Local task data
+settings.json            Local preferences data
 requirements.txt         Python dependencies
 ```
 

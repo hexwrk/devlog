@@ -9,6 +9,7 @@ import tkinter as tk
 import storage
 import theme
 from models import Task
+from views.components import ui
 from views.components.task_card import TaskCard
 
 ALL = "All"
@@ -17,12 +18,12 @@ KANBAN_STATUSES = ["Todo", "In Progress", "Done", "Blocked"]
 
 class BoardView(ctk.CTkFrame):
 
-    def __init__(self, parent, search_var: ctk.StringVar | None = None):
+    def __init__(self, parent, search_var: ctk.StringVar | None = None, default_view: str = "list"):
         super().__init__(parent, fg_color=theme.BG)
 
         self._search_var = search_var or ctk.StringVar(value="")
         self._search_var.trace_add("write", lambda *_: self._render())
-        self._view_mode = ctk.StringVar(value="list")
+        self._view_mode = ctk.StringVar(value=default_view)
 
         self._build_header()
         self._build_filter_bar()
@@ -33,30 +34,13 @@ class BoardView(ctk.CTkFrame):
     # ── Header ────────────────────────────────────────────────────────────────
 
     def _build_header(self):
-        row = ctk.CTkFrame(self, fg_color="transparent")
-        row.pack(fill="x", padx=theme.SPACE_3XL, pady=(theme.SPACE_3XL, 0))
-
-        title_col = ctk.CTkFrame(row, fg_color="transparent")
-        title_col.pack(side="left")
-
-        ctk.CTkLabel(
-            title_col, text="Board",
-            font=theme.FONT_PAGE_TITLE(), text_color=theme.TEXT,
-        ).pack(anchor="w")
-
-        ctk.CTkLabel(
-            title_col, text="Organize and track all your tasks",
-            font=theme.FONT_BODY(), text_color=theme.TEXT_SECONDARY,
-        ).pack(anchor="w", pady=(2, 0))
-
-        ctk.CTkButton(
-            row, text="+  Add Task",
-            width=120, height=36, corner_radius=8,
-            fg_color=theme.PRIMARY, hover_color=theme.PRIMARY_HOVER,
-            text_color="#FFFFFF",
-            font=theme.font(13, "bold"),
-            command=self._open_add_modal,
-        ).pack(side="right", anchor="n")
+        header = ui.PageHeader(
+            self, title="Board",
+            breadcrumb=["Workspace", "Board"],
+            subtitle="Organize and track all your tasks.",
+            action={"text": f"{theme.icon('add')}  Add Task", "command": self._open_add_modal},
+        )
+        header.pack(fill="x", padx=theme.SPACE_3XL, pady=(theme.SPACE_3XL, 0))
 
     # ── Filters ───────────────────────────────────────────────────────────────
 
@@ -70,7 +54,7 @@ class BoardView(ctk.CTkFrame):
         self._cat_var = ctk.StringVar(value=ALL)
         self._cat_menu = ctk.CTkOptionMenu(
             bar, variable=self._cat_var, values=[ALL],
-            width=108, height=30, corner_radius=8,
+            width=108, height=30, corner_radius=theme.RADIUS_SM,
             fg_color=theme.PANEL, button_color=theme.CARD,
             button_hover_color=theme.CARD_HOVER,
             text_color=theme.TEXT, font=lf,
@@ -82,7 +66,7 @@ class BoardView(ctk.CTkFrame):
         self._skill_var = ctk.StringVar(value=ALL)
         self._skill_menu = ctk.CTkOptionMenu(
             bar, variable=self._skill_var, values=[ALL],
-            width=108, height=30, corner_radius=8,
+            width=108, height=30, corner_radius=theme.RADIUS_SM,
             fg_color=theme.PANEL, button_color=theme.CARD,
             button_hover_color=theme.CARD_HOVER,
             text_color=theme.TEXT, font=lf,
@@ -95,7 +79,7 @@ class BoardView(ctk.CTkFrame):
         self._status_menu = ctk.CTkOptionMenu(
             bar, variable=self._status_var,
             values=[ALL] + KANBAN_STATUSES,
-            width=108, height=30, corner_radius=8,
+            width=108, height=30, corner_radius=theme.RADIUS_SM,
             fg_color=theme.PANEL, button_color=theme.CARD,
             button_hover_color=theme.CARD_HOVER,
             text_color=theme.TEXT, font=lf,
@@ -103,34 +87,37 @@ class BoardView(ctk.CTkFrame):
         )
         self._status_menu.pack(side="left", padx=(6, theme.SPACE_LG))
 
-        ctk.CTkButton(
+        self._build_clear_filters_button(bar)
+
+        ui.Divider(self, padx=theme.SPACE_3XL, pady=(theme.SPACE_LG, 0))
+
+    def _build_clear_filters_button(self, bar):
+        # ui.GhostButton is transparent by default; add a subtle border to read as a button here.
+        btn = ctk.CTkButton(
             bar, text="Clear Filters",
-            width=100, height=30, corner_radius=8,
+            width=100, height=30, corner_radius=theme.RADIUS_SM,
             fg_color="transparent", hover_color=theme.PANEL,
             border_width=1, border_color=theme.BORDER,
-            text_color=theme.TEXT_SECONDARY, font=lf,
+            text_color=theme.TEXT_SECONDARY, font=theme.FONT_META(),
             command=self._clear_filters,
-        ).pack(side="left")
-
-        ctk.CTkFrame(self, height=1, fg_color=theme.BORDER).pack(
-            fill="x", padx=theme.SPACE_3XL, pady=(theme.SPACE_LG, 0)
         )
+        btn.pack(side="left")
 
     def _build_view_toggle(self):
         bar = ctk.CTkFrame(self, fg_color="transparent")
         bar.pack(fill="x", padx=theme.SPACE_3XL, pady=(theme.SPACE_LG, 0))
 
         self._list_btn = ctk.CTkButton(
-            bar, text="☷  List View",
-            width=120, height=30, corner_radius=8,
+            bar, text="☰  List View",
+            width=120, height=30, corner_radius=theme.RADIUS_SM,
             font=theme.FONT_META(),
             command=lambda: self._set_view_mode("list"),
         )
         self._list_btn.pack(side="left", padx=(0, 6))
 
         self._board_btn = ctk.CTkButton(
-            bar, text="▦  Board View",
-            width=120, height=30, corner_radius=8,
+            bar, text=f"{theme.icon('board')}  Board View",
+            width=120, height=30, corner_radius=theme.RADIUS_SM,
             font=theme.FONT_META(),
             command=lambda: self._set_view_mode("board"),
         )
@@ -156,9 +143,11 @@ class BoardView(ctk.CTkFrame):
         self._search_var.set("")
         self._render()
 
-    def set_category_filter(self, category: str):
-        """Called from the sidebar's category quick-filter list."""
-        self._cat_var.set(category)
+    def set_view_mode(self, mode: str):
+        if mode in ("list", "board"):
+            self._set_view_mode(mode)
+
+    def refresh(self):
         self._render()
 
     # ── Scroll area (List View host) ─────────────────────────────────────────
@@ -241,12 +230,22 @@ class BoardView(ctk.CTkFrame):
         for widget in self._inner.winfo_children():
             widget.destroy()
 
+        all_tasks_empty = not storage.load_tasks()
         if not tasks:
-            ctk.CTkLabel(
-                self._inner,
-                text="No tasks match the current filters.",
-                font=theme.FONT_BODY(), text_color=theme.TEXT_MUTED,
-            ).pack(pady=40)
+            if all_tasks_empty:
+                ui.EmptyState(
+                    self._inner,
+                    title="No tasks yet",
+                    subtitle="Add a task to start building your\nproductivity board.",
+                    action_text=f"{theme.icon('add')}  Add your first task",
+                    action_command=self._open_add_modal,
+                ).pack(fill="x")
+            else:
+                ui.EmptyState(
+                    self._inner,
+                    title="No matching tasks",
+                    subtitle="Try adjusting or clearing your filters.",
+                ).pack(fill="x")
             return
 
         for task in tasks:
@@ -254,6 +253,7 @@ class BoardView(ctk.CTkFrame):
                 self._inner, task=task,
                 on_edit=self._open_edit_modal,
                 on_delete=self._handle_delete,
+                on_advance=self._handle_advance,
             )
             card.pack(fill="x", pady=5)
 
@@ -267,7 +267,7 @@ class BoardView(ctk.CTkFrame):
 
         for i, status in enumerate(KANBAN_STATUSES):
             info = theme.STATUS[status]
-            column = ctk.CTkFrame(self._kanban_frame, fg_color=theme.PANEL, corner_radius=12)
+            column = ctk.CTkFrame(self._kanban_frame, fg_color=theme.PANEL, corner_radius=theme.RADIUS_LG)
             trailing_pad = theme.SPACE_SM if i < len(KANBAN_STATUSES) - 1 else 0
             column.pack(side="left", fill="both", expand=True, padx=(0, trailing_pad))
 
@@ -285,11 +285,19 @@ class BoardView(ctk.CTkFrame):
             body = ctk.CTkScrollableFrame(column, width=1, fg_color="transparent")
             body.pack(fill="both", expand=True, padx=theme.SPACE_SM, pady=(0, theme.SPACE_SM))
 
+            if not grouped[status]:
+                ctk.CTkLabel(
+                    body, text="No tasks",
+                    font=theme.FONT_META(), text_color=theme.TEXT_MUTED,
+                ).pack(pady=theme.SPACE_LG)
+                continue
+
             for task in grouped[status]:
                 card = TaskCard(
                     body, task=task,
                     on_edit=self._open_edit_modal,
                     on_delete=self._handle_delete,
+                    on_advance=self._handle_advance,
                     compact=True,
                 )
                 card.pack(fill="x", pady=4)
@@ -304,6 +312,11 @@ class BoardView(ctk.CTkFrame):
 
     def _handle_delete(self, task_id: str):
         storage.delete_task(task_id)
+        self._render()
+
+    def _handle_advance(self, task: Task):
+        task.status = theme.next_status(task.status)
+        storage.update_task(task)
         self._render()
 
     def _open_add_modal(self):

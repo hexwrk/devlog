@@ -133,6 +133,33 @@ def get_category_completion(tasks: list[Task]) -> dict[str, int]:
     }
 
 
+def get_category_performance(tasks: list[Task]) -> dict[str, dict]:
+    """
+    Return, per category represented by tasks:
+      total: total task count
+      completed: count of Done tasks
+      time_minutes: summed duration_minutes across Done tasks
+    """
+    grouped: dict[str, list[Task]] = {}
+    for task in tasks:
+        grouped.setdefault(task.category, []).append(task)
+
+    performance = {}
+    for category, group in grouped.items():
+        done = [t for t in group if t.status == "Done"]
+        performance[category] = {
+            "total": len(group),
+            "completed": len(done),
+            "time_minutes": sum(t.duration_minutes for t in done),
+        }
+    return performance
+
+
+def get_total_time_minutes(tasks: list[Task]) -> int:
+    """Return summed duration_minutes across all Done tasks."""
+    return sum(t.duration_minutes for t in tasks if t.status == "Done")
+
+
 XP_PER_LEVEL = 100
 
 
